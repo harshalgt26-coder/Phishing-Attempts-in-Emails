@@ -1,0 +1,9 @@
+{
+  "subject": "URGENT: Unpaid invoice #93831",
+  "body_text": "Your account will be suspended unless you pay the attached invoice immediately. Verify your payment details using the secure portal link.",
+  "sender_email": "Accounts Dept <billing@secure-pay-verify.xyz>",
+  "sender_display_name": "Accounts Dept",
+  "attachments": [
+    {"filename": "invoice_93831.zip", "mime_type": "application/zip", "size_bytes": 24576}
+  ]
+}
