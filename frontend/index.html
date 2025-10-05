@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gmail-like Inbox - Phishing Detector</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg: #0b0f14; --panel: #0f1720; --muted: #94a3b8; --text: #e2e8f0; --danger: #ef4444; --warn: #f59e0b; --safe: #22c55e; --accent: #4f46e5; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; background: linear-gradient(180deg, #0a0f16 0%, #0b1220 100%); color: var(--text); }
+    .app { display: grid; grid-template-columns: 280px 1fr; height: 100vh; }
+    .sidebar { background: rgba(15, 23, 32, 0.9); border-right: 1px solid rgba(148, 163, 184, 0.12); padding: 16px; backdrop-filter: blur(8px); }
+    .sidebar h2 { margin: 0 0 12px; font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+    .compose { display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(180deg, #1f2937, #111827); color: white; border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 12px; padding: 10px 14px; font-weight: 600; cursor: pointer; box-shadow: 0 8px 28px rgba(79,70,229,0.15), inset 0 1px 1px rgba(255,255,255,0.06); }
+    .compose:hover { background: #1f2548; }
+    .mail-list { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+    .mail-item { display: grid; grid-template-columns: 24px 1fr auto; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; background: rgba(17, 24, 39, 0.7); border: 1px solid rgba(148, 163, 184, 0.12); cursor: pointer; }
+    .mail-item:hover { background: rgba(30, 41, 59, 0.7); }
+    .avatar { width: 24px; height: 24px; border-radius: 999px; background: linear-gradient(180deg, #6366f1, #312e81); display: grid; place-items: center; font-weight: 700; font-size: 12px; }
+    .subject { font-weight: 600; }
+    .muted { color: var(--muted); font-size: 12px; }
+    .content { padding: 20px; }
+    .viewer { max-width: 920px; margin: 0 auto; background: rgba(15, 23, 32, 0.8); border: 1px solid rgba(148, 163, 184, 0.14); border-radius: 16px; overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,0.35); }
+    .viewer-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid rgba(148, 163, 184, 0.14); background: linear-gradient(180deg, rgba(17, 24, 39, 0.8), rgba(15, 23, 32, 0.5)); }
+    .sender { display: flex; align-items: center; gap: 12px; }
+    .sender .email { font-weight: 600; }
+    .sender .name { color: var(--muted); font-size: 12px; }
+    .badge { padding: 4px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; border: 1px solid; }
+    .badge.safe { color: var(--safe); border-color: rgba(34, 197, 94, 0.45); background: rgba(34, 197, 94, 0.08); }
+    .badge.warn { color: var(--warn); border-color: rgba(245, 158, 11, 0.45); background: rgba(245, 158, 11, 0.08); }
+    .badge.danger { color: var(--danger); border-color: rgba(239, 68, 68, 0.45); background: rgba(239, 68, 68, 0.08); }
+    .subject-line { padding: 12px 20px; font-size: 18px; font-weight: 700; }
+    .body { padding: 20px; line-height: 1.6; color: #dbeafe; }
+    .warning { margin: 12px 20px; padding: 14px; border-radius: 12px; border: 1px solid rgba(239, 68, 68, 0.3); background: linear-gradient(180deg, rgba(153, 27, 27, 0.15), rgba(153, 27, 27, 0.05)); }
+    .warning strong { color: var(--danger); }
+    .actions { display: flex; gap: 8px; padding: 16px 20px; border-top: 1px solid rgba(148, 163, 184, 0.12); background: rgba(17, 24, 39, 0.4); }
+    button.action { padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(148, 163, 184, 0.18); background: #0b1220; color: var(--text); font-weight: 600; cursor: pointer; }
+    button.action:hover { background: #10192a; }
+    .signals { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 16px 20px; }
+    .signal { border: 1px solid rgba(148, 163, 184, 0.16); border-radius: 10px; padding: 10px; background: rgba(17, 24, 39, 0.5); }
+    .signal .title { font-weight: 600; }
+    .signal .desc { color: var(--muted); font-size: 12px; }
+    .footer { padding: 12px 0; text-align: center; color: var(--muted); font-size: 12px; }
+    .api { display: flex; gap: 8px; padding: 12px 20px; }
+    input, textarea { width: 100%; background: rgba(2,6,23,0.6); color: var(--text); border: 1px solid rgba(148, 163, 184, 0.18); border-radius: 10px; padding: 10px; }
+    label { font-size: 12px; color: var(--muted); }
+    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <button class="compose">✉️ Compose</button>
+    <h2>Inbox</h2>
+    <div id="mailList" class="mail-list"></div>
+  </aside>
+  <main class="content">
+    <div class="viewer">
+      <div class="viewer-header">
+        <div class="sender"><div class="avatar" id="avatar">A</div>
+          <div>
+            <div class="email" id="senderEmail">-</div>
+            <div class="name" id="senderName">-</div>
+          </div>
+        </div>
+        <div class="badge" id="badge">-</div>
+      </div>
+      <div class="subject-line" id="subject">-</div>
+      <div class="warning" id="warning" style="display:none"></div>
+      <div class="signals" id="signals"></div>
+      <div class="body" id="body">Select an email from the left or load a sample.</div>
+      <div class="actions">
+        <button class="action" id="loadSamples">Load Sample Emails</button>
+        <button class="action" id="analyze">Analyze</button>
+        <button class="action" id="report">Report</button>
+        <button class="action" id="block">Block Sender</button>
+      </div>
+      <div class="api">
+        <div class="grid" style="width:100%">
+          <div>
+            <label>Sender Email</label>
+            <input id="formSender" placeholder="support@secure-payments.com" />
+          </div>
+          <div>
+            <label>Sender Name</label>
+            <input id="formName" placeholder="Security Team" />
+          </div>
+          <div>
+            <label>Subject</label>
+            <input id="formSubject" placeholder="Your account was suspended" />
+          </div>
+          <div>
+            <label>Body (Text)</label>
+            <textarea id="formBody" rows="4" placeholder="We detected unusual activity. Verify your account immediately..."></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="footer">Demo only. Do not paste real secrets. LLM-based judgement may be wrong.</div>
+  </main>
+</div>
+<script>
+const state = {
+  emails: [],
+  selected: null,
+  result: null,
+};
+
+function h(tag, props={}, ...children){ const el = document.createElement(tag); Object.assign(el, props); children.forEach(c=>{ if(typeof c === 'string') el.appendChild(document.createTextNode(c)); else if(c) el.appendChild(c); }); return el; }
+function $(id){ return document.getElementById(id); }
+
+function setBadge(verdict, confidence){
+  const el = $('badge');
+  el.className = 'badge ' + (verdict==='phishing'?'danger': verdict==='suspicious'?'warn':'safe');
+  el.textContent = verdict.toUpperCase() + ' • ' + confidence.toUpperCase();
+}
+
+function renderSignals(signals){
+  const box = $('signals');
+  box.innerHTML = '';
+  signals.forEach(s=>{
+    box.appendChild(h('div', {className:'signal'},
+      h('div', {className:'title'}, s.title),
+      h('div', {className:'desc'}, s.description)
+    ));
+  });
+}
+
+function renderWarning(result){
+  const w = $('warning');
+  if(result.verdict==='phishing' && result.confidence==='high'){
+    w.style.display='block';
+    w.innerHTML = '<strong>High-likelihood phishing detected.</strong> We recommend you report and block this sender.';
+  } else if(result.verdict==='suspicious'){
+    w.style.display='block';
+    w.innerHTML = 'Potential phishing indicators found. Proceed with caution and verify identity.';
+  } else { w.style.display='none'; w.innerHTML=''; }
+}
+
+function selectEmail(email){
+  state.selected = email;
+  $('senderEmail').textContent = email.sender_email;
+  $('senderName').textContent = email.sender_display_name || '-';
+  $('subject').textContent = email.subject || '(no subject)';
+  $('body').textContent = email.body_text || '(no content)';
+  $('avatar').textContent = (email.sender_display_name || email.sender_email || '?')[0].toUpperCase();
+  state.result = null; setBadge('-', '-'); renderSignals([]); renderWarning({verdict: 'safe', confidence: 'low'});
+}
+
+function renderList(){
+  const list = $('mailList'); list.innerHTML = '';
+  state.emails.forEach((e, idx)=>{
+    const item = h('div', {className:'mail-item', onclick:()=>selectEmail(e)},
+      h('div', {className:'avatar'}, (e.sender_display_name||e.sender_email||'?')[0].toUpperCase()),
+      h('div', {}, h('div', {className:'subject'}, e.subject || '(no subject)'), h('div', {className:'muted'}, e.sender_email)),
+      h('div', {className:'muted'}, new Date().toLocaleDateString())
+    );
+    list.appendChild(item);
+  });
+}
+
+const API_BASE = 'http://127.0.0.1:8000';
+
+$('loadSamples').onclick = async () => {
+  try{
+    const r = await fetch(API_BASE + '/samples');
+    const data = await r.json();
+    state.emails = data.samples || [];
+    renderList();
+    if(state.emails[0]) selectEmail(state.emails[0]);
+  }catch(e){ alert('Failed to load samples'); }
+};
+
+$('analyze').onclick = async () => {
+  const email = state.selected || {
+    sender_email: $('formSender').value,
+    sender_display_name: $('formName').value,
+    subject: $('formSubject').value,
+    body_text: $('formBody').value,
+  };
+  if(!email.sender_email){ alert('Please provide sender email'); return; }
+
+  const form = new FormData();
+  form.append('sender_email', email.sender_email);
+  form.append('sender_display_name', email.sender_display_name || '');
+  form.append('subject', email.subject || '');
+  form.append('body_text', email.body_text || '');
+
+  const res = await fetch(API_BASE + '/detect', { method: 'POST', body: form });
+  const result = await res.json();
+  state.result = result; setBadge(result.verdict, result.confidence);
+  renderSignals(result.signals || []); renderWarning(result);
+};
+
+$('report').onclick = ()=> alert('Reported to security. (demo)');
+$('block').onclick = ()=> alert('Sender blocked. (demo)');
+</script>
+</body>
+</html>
